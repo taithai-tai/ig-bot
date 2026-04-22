@@ -1,6 +1,6 @@
 # IG DM Reply Helper (Web)
 
-เว็บช่วยสร้างคำตอบ DM และส่งข้อความไป Instagram ได้จริงผ่าน Instagram Graph API
+เว็บช่วยสร้างคำตอบ DM จาก "แชทจริงใน IG" (ทั้งเขาพิมพ์มา + เราพิมพ์ไป) และส่งข้อความกลับไปหาอีกฝ่ายได้ทันที
 
 ## วิธีรัน
 
@@ -11,20 +11,29 @@ META_APP_ID=YOUR_APP_ID META_APP_SECRET=YOUR_APP_SECRET npm start
 
 เปิด `http://localhost:3000`
 
-## ปุ่ม Connect Instagram
+## วิธีที่ระบบดึงข้อมูลจาก IG
 
-ปุ่ม `Connect Instagram` จะเปิด OAuth ของ Meta และดึง access token กลับมาใส่ในฟอร์มให้อัตโนมัติ
+1. กด `Connect Instagram` เพื่อทำ OAuth กับ Meta
+2. ระบบจะได้ `access token` และเติมในฟอร์มให้
+3. กด `ดึงแชทจาก IG`
+4. backend จะเรียก Graph API สองจุด:
+   - `/{igUserId}/conversations` เพื่อหาห้องแชท
+   - `/{conversationId}/messages` เพื่อดึงข้อความทั้งหมดในห้องนั้น
+5. ระบบแสดงประวัติแชท (แยกว่า "เขา" หรือ "ฉัน") และสร้างคำตอบ 3 เซ็ต
 
-ต้องตั้งค่า Redirect URI ใน Meta Developer ให้ตรงกับ:
+## คุณต้องเตรียมอะไรให้ระบบบ้าง
+
+- `META_APP_ID` และ `META_APP_SECRET` (ตอนรันเซิร์ฟเวอร์)
+- Instagram Professional/Business account
+- IG ผูกกับ Facebook Page
+- App ใน Meta Developer ที่ได้สิทธิ์ Instagram Messaging
+- ในหน้าเว็บต้องมี:
+  - `IG User ID` ของบัญชีคุณ
+  - `Recipient ID` ของคนที่คุยกับคุณ
+  - `Access Token` (ได้จากปุ่ม Connect หรือกรอกเอง)
+
+## ตั้งค่า Redirect URI ใน Meta
 
 - `http://localhost:3000/auth/instagram/callback`
 
-## สิ่งที่ต้องมีเพื่อส่ง DM จริง
-
-- Instagram Professional/Business account
-- เชื่อม IG กับ Facebook Page
-- App บน Meta for Developers ที่อนุญาต Instagram Messaging
-- Access Token ที่มีสิทธิ์ส่งข้อความ
-- `IG User ID` ของบัญชีเรา และ `Recipient ID` ของผู้รับ
-
-> หมายเหตุ: ถ้า token/permission ไม่ถูกต้อง API จะตอบ error กลับมาในหน้าเว็บ
+> หมายเหตุ: ถ้า permission/token ยังไม่ผ่าน review หรือไม่ครบ scope ระบบจะดึงแชท/ส่งข้อความไม่สำเร็จและแสดง error กลับมา

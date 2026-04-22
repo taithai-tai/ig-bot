@@ -6,7 +6,7 @@
     <title>IG DM Reply Helper</title>
     <style>
       body { margin:0; font-family: system-ui, sans-serif; background:#f5f7fb; color:#111827; }
-      .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px 30px; }
+      .wrap { max-width: 1080px; margin: 24px auto; padding: 0 16px 30px; }
       h1 { margin:0 0 8px; }
       p { color:#4b5563; margin:0 0 14px; }
       .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-top:12px; }
@@ -17,17 +17,32 @@
       button { margin-top:10px; border:0; border-radius:10px; padding:10px 14px; background:#2563eb; color:#fff; font-weight:700; cursor:pointer; }
       button.secondary { background:#059669; margin-left:8px; }
       button.ig { background:#c026d3; margin-left:8px; }
+      button.dark { background:#111827; margin-left:8px; }
       pre { background:#0f172a; color:#e2e8f0; padding:12px; border-radius:10px; min-height:130px; overflow:auto; }
-      #sendStatus, #connectStatus { margin-top:10px; font-size:.9rem; }
+      #sendStatus, #connectStatus, #fetchStatus { margin-top:10px; font-size:.9rem; }
+      #historyBox { max-height: 260px; overflow:auto; background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:10px; white-space:pre-wrap; }
     </style>
   </head>
   <body>
     <main class="wrap">
-      <h1>ตัวช่วยตอบ IG DM + ส่งจริง</h1>
-      <p>สร้าง JSON คำตอบ แล้วส่งข้อความเข้า Instagram ผ่าน Instagram Graph API (Business/Professional account)</p>
+      <h1>ตัวช่วยตอบ IG DM + ดึงแชทจริง</h1>
+      <p>ดึงข้อความจาก IG (ทั้งเขาพิมพ์มาและเราพิมพ์ไป) แล้วสร้างคำตอบ 3 เซ็ต พร้อมส่งกลับไปที่ IG</p>
 
       <section class="card">
-        <h3>1) Persona</h3>
+        <h3>1) เชื่อมต่อ Instagram</h3>
+        <div class="grid">
+          <div><label for="igUserId">IG User ID (ของบัญชีเรา)</label><input id="igUserId" placeholder="1784..." /></div>
+          <div><label for="recipientId">Recipient ID (PSID/IGSID)</label><input id="recipientId" placeholder="USER_ID ที่คุยกับเรา" /></div>
+        </div>
+        <div style="margin-top:10px"><label for="accessToken">Page/IG Access Token</label><input id="accessToken" type="password" placeholder="EAAG..." /></div>
+        <button class="ig" id="connectBtn">Connect Instagram</button>
+        <button class="dark" id="fetchBtn">ดึงแชทจาก IG</button>
+        <div id="connectStatus"></div>
+        <div id="fetchStatus"></div>
+      </section>
+
+      <section class="card">
+        <h3>2) Persona</h3>
         <div class="grid">
           <div><label for="callThem">callThem</label><input id="callThem" placeholder="เธอ" /></div>
           <div><label for="callSelf">callSelf</label><input id="callSelf" placeholder="เรา" /></div>
@@ -37,22 +52,18 @@
           <div><label for="emoji">emoji</label><select id="emoji"><option>ไม่ใช้</option><option selected>นิดหน่อย</option><option>น่ารัก</option></select></div>
         </div>
         <div style="margin-top:10px"><label for="specialRule">specialRule</label><input id="specialRule" placeholder="เช่น ห้ามใช้คำว่า คิดถึง" /></div>
-        <div style="margin-top:10px"><label for="latest">ข้อความล่าสุดจากอีกฝ่าย</label><textarea id="latest" placeholder="พิมพ์ข้อความล่าสุด..."></textarea></div>
-        <button id="genBtn">Generate JSON</button>
+        <button id="genBtn">สร้างคำตอบ 3 เซ็ตจากแชทล่าสุด</button>
       </section>
 
       <section class="card">
-        <h3>2) เชื่อมต่อ Instagram</h3>
-        <div class="grid">
-          <div><label for="igUserId">IG User ID (ของบัญชีเรา)</label><input id="igUserId" placeholder="1784..." /></div>
-          <div><label for="recipientId">Recipient ID (PSID/IGSID)</label><input id="recipientId" placeholder="USER_ID ที่คุยกับเรา" /></div>
-        </div>
-        <div style="margin-top:10px"><label for="accessToken">Page/IG Access Token</label><input id="accessToken" type="password" placeholder="EAAG..." /></div>
-        <button class="ig" id="connectBtn">Connect Instagram</button>
-        <div id="connectStatus"></div>
-        <div style="margin-top:10px"><label for="replyIndex">เลือกข้อความที่จะส่ง</label>
-          <select id="replyIndex"><option value="0">Reply #1 (ปลอดภัย)</option><option value="1">Reply #2 (มีอารมณ์)</option><option value="2">Reply #3 (ขี้เล่น)</option></select>
-        </div>
+        <h3>ประวัติแชทจาก IG (ล่าสุด)</h3>
+        <div id="historyBox">ยังไม่ได้ดึงข้อมูล</div>
+      </section>
+
+      <section class="card">
+        <h3>3) ส่งกลับไปที่ IG</h3>
+        <label for="replyIndex">เลือกเซ็ตที่จะส่ง</label>
+        <select id="replyIndex"><option value="0">เซ็ตที่ 1 (ปลอดภัย)</option><option value="1">เซ็ตที่ 2 (อารมณ์มากขึ้น)</option><option value="2">เซ็ตที่ 3 (ขี้เล่น)</option></select>
         <button class="secondary" id="sendBtn">Send to Instagram</button>
         <div id="sendStatus"></div>
       </section>

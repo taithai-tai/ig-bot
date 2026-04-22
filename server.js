@@ -16,12 +16,7 @@ app.get('/auth/instagram/start', (req, res) => {
     return res.status(500).send('Missing META_APP_ID in server env');
   }
 
-  const scopes = [
-    'instagram_basic',
-    'instagram_manage_messages',
-    'pages_show_list',
-    'pages_messaging'
-  ].join(',');
+  const scopes = ['instagram_basic', 'instagram_manage_messages', 'pages_show_list', 'pages_messaging'].join(',');
 
   const url = new URL('https://www.facebook.com/v22.0/dialog/oauth');
   url.searchParams.set('client_id', APP_ID);
@@ -34,12 +29,8 @@ app.get('/auth/instagram/start', (req, res) => {
 
 app.get('/auth/instagram/callback', async (req, res) => {
   const code = req.query.code;
-  if (!code) {
-    return res.status(400).send('Missing code');
-  }
-  if (!APP_ID || !APP_SECRET) {
-    return res.status(500).send('Missing META_APP_ID or META_APP_SECRET');
-  }
+  if (!code) return res.status(400).send('Missing code');
+  if (!APP_ID || !APP_SECRET) return res.status(500).send('Missing META_APP_ID or META_APP_SECRET');
 
   try {
     const tokenUrl = new URL('https://graph.facebook.com/v22.0/oauth/access_token');
@@ -50,20 +41,19 @@ app.get('/auth/instagram/callback', async (req, res) => {
 
     const tokenRes = await fetch(tokenUrl);
     const tokenData = await tokenRes.json();
-
     if (!tokenRes.ok || tokenData.error || !tokenData.access_token) {
       return res.status(400).send(`Token exchange failed: ${tokenData?.error?.message || 'unknown error'}`);
     }
 
     const accessToken = tokenData.access_token;
-
     const meUrl = new URL('https://graph.facebook.com/v22.0/me/accounts');
+    meUrl.searchParams.set('fields', 'instagram_business_account{id,name},name,id');
     meUrl.searchParams.set('access_token', accessToken);
 
     const pagesRes = await fetch(meUrl);
     const pagesData = await pagesRes.json();
 
-    const firstPage = pagesData?.data?.[0];
+    const firstPage = pagesData?.data?.find((p) => p.instagram_business_account?.id);
     const igUserId = firstPage?.instagram_business_account?.id || '';
 
     return res.send(`<!doctype html><html><body>
@@ -79,6 +69,65 @@ app.get('/auth/instagram/callback', async (req, res) => {
     </body></html>`);
   } catch (error) {
     return res.status(500).send(`OAuth error: ${error.message}`);
+  }
+});
+
+app.post('/api/fetch-chat', async (req, res) => {
+  const { igUserId, recipientId, accessToken } = req.body || {};
+  if (!igUserId || !recipientId || !accessToken) {
+    return res.status(400).json({ error: 'missing required fields' });
+  }
+
+  try {
+    const convUrl = new URL(`https://graph.facebook.com/v22.0/${igUserId}/conversations`);
+    convUrl.searchParams.set('platform', 'instagram');
+    convUrl.searchParams.set('fields', 'id,updated_time,participants');
+    convUrl.searchParams.set('limit', '25');
+    convUrl.searchParams.set('access_token', accessToken);
+
+    const convRes = await fetch(convUrl);
+    const convData = await convRes.json();
+
+    if (!convRes.ok || convData.error) {
+      return res.status(400).json({ error: convData?.error?.message || 'cannot load conversations', raw: convData });
+    }
+
+    const conversation = (convData?.data || []).find((c) =>
+      (c?.participants?.data || []).some((p) => String(p.id) === String(recipientId))
+    );
+
+    if (!conversation?.id) {
+      return res.status(404).json({ error: 'conversation with recipient not found' });
+    }
+
+    const msgUrl = new URL(`https://graph.facebook.com/v22.0/${conversation.id}/messages`);
+    msgUrl.searchParams.set('fields', 'id,from,to,message,created_time');
+    msgUrl.searchParams.set('limit', '50');
+    msgUrl.searchParams.set('access_token', accessToken);
+
+    const msgRes = await fetch(msgUrl);
+    const msgData = await msgRes.json();
+
+    if (!msgRes.ok || msgData.error) {
+      return res.status(400).json({ error: msgData?.error?.message || 'cannot load messages', raw: msgData });
+    }
+
+    const messages = (msgData?.data || [])
+      .map((m) => {
+        const fromId = String(m?.from?.id || '');
+        return {
+          id: m.id,
+          text: m.message || '',
+          created_time: m.created_time,
+          from_id: fromId,
+          direction: fromId === String(recipientId) ? 'inbound' : 'outbound'
+        };
+      })
+      .sort((a, b) => new Date(b.created_time) - new Date(a.created_time));
+
+    return res.json({ conversationId: conversation.id, messages });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 });
 
@@ -101,7 +150,6 @@ app.post('/api/send-dm', async (req, res) => {
     });
 
     const graphData = await graphRes.json();
-
     if (!graphRes.ok || graphData.error) {
       return res.status(400).json({ error: graphData?.error?.message || 'graph api error', raw: graphData });
     }

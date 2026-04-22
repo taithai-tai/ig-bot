@@ -6,7 +6,6 @@ const E = {
   ending: document.getElementById('ending'),
   emoji: document.getElementById('emoji'),
   specialRule: document.getElementById('specialRule'),
-  latest: document.getElementById('latest'),
   output: document.getElementById('output'),
   genBtn: document.getElementById('genBtn'),
   igUserId: document.getElementById('igUserId'),
@@ -16,10 +15,14 @@ const E = {
   sendBtn: document.getElementById('sendBtn'),
   sendStatus: document.getElementById('sendStatus'),
   connectBtn: document.getElementById('connectBtn'),
-  connectStatus: document.getElementById('connectStatus')
+  connectStatus: document.getElementById('connectStatus'),
+  fetchBtn: document.getElementById('fetchBtn'),
+  fetchStatus: document.getElementById('fetchStatus'),
+  historyBox: document.getElementById('historyBox')
 };
 
 let lastOutput = null;
+let latestMessages = [];
 
 function detectMood(text) {
   const t = text.toLowerCase();
@@ -48,12 +51,12 @@ function fitLength(text, length) {
   return `${text} เดี๋ยวเราอยู่ตรงนี้นะ ถ้าอยากเล่าเพิ่มก็บอกได้เลย`;
 }
 
-function makeInsight(mood, latest) {
-  if (!latest.trim()) return 'อีกฝ่ายยังไม่ได้ส่งข้อความชัดเจน ควรเปิดบทสนทนาแบบสบาย ๆ ก่อน';
-  if (mood === 'sad') return 'อีกฝ่ายดูอารมณ์ตกหรือเหนื่อยอยู่ ต้องการคำตอบที่อ่อนโยน';
-  if (mood === 'question') return 'อีกฝ่ายกำลังถาม ควรตอบให้ตรงและชัด';
-  if (mood === 'cute') return 'อีกฝ่ายมาโหมดอ้อนหรือหวาน ๆ ตอบน่ารักได้';
-  return 'อีกฝ่ายคุยเล่นสบาย ๆ ตอบแบบกันเองได้';
+function makeInsight(mood) {
+  if (!latestMessages.length) return 'ยังไม่มีแชทจาก IG ให้ดึงแชทก่อน แล้วค่อยสร้างคำตอบ';
+  if (mood === 'sad') return 'จากแชทล่าสุด อีกฝ่ายดูอารมณ์ตก ควรตอบแบบนุ่มและรับฟัง';
+  if (mood === 'question') return 'จากแชทล่าสุด อีกฝ่ายถามตรง ๆ ควรตอบให้ชัด';
+  if (mood === 'cute') return 'จากแชทล่าสุด อีกฝ่ายมาโหมดอ้อน ตอบน่ารักเบา ๆ ได้';
+  return 'จากแชทล่าสุด บทสนทนาเป็นกันเอง ควรตอบแบบธรรมชาติ';
 }
 
 function buildReplies({ callThem, callSelf, length, ending, emoji, mood }) {
@@ -82,9 +85,23 @@ function applySpecialRule(replies, specialRule) {
   return replies.map((line) => `${line} (${specialRule})`);
 }
 
+function renderHistory(messages) {
+  if (!messages.length) {
+    E.historyBox.textContent = 'ไม่พบข้อความในห้องแชทนี้';
+    return;
+  }
+
+  const rows = messages
+    .map((m) => `${m.direction === 'inbound' ? 'เขา' : 'ฉัน'}: ${m.text || '[ไม่มีข้อความ]'} (${m.created_time || '-'})`)
+    .join('\n');
+
+  E.historyBox.textContent = rows;
+}
+
 function generateOutput() {
-  const latest = E.latest.value || '';
-  const mood = detectMood(latest);
+  const latestText = latestMessages[0]?.text || '';
+  const mood = detectMood(latestText);
+
   let replies = buildReplies({
     callThem: E.callThem.value.trim(),
     callSelf: E.callSelf.value.trim(),
@@ -93,8 +110,18 @@ function generateOutput() {
     emoji: E.emoji.value,
     mood
   });
+
   replies = applySpecialRule(replies, E.specialRule.value);
-  lastOutput = { insight: makeInsight(mood, latest), replies };
+
+  lastOutput = {
+    insight: makeInsight(mood),
+    source: {
+      latest_message: latestText,
+      total_messages_loaded: latestMessages.length
+    },
+    replies
+  };
+
   E.output.textContent = JSON.stringify(lastOutput, null, 2);
 }
 
@@ -103,7 +130,40 @@ function connectInstagram() {
   const popup = window.open('/auth/instagram/start', 'ig-connect', 'width=520,height=720');
   if (!popup) {
     E.connectStatus.textContent = 'เบราว์เซอร์บล็อก popup กรุณาอนุญาตก่อน';
+  }
+}
+
+async function fetchChatHistory() {
+  const igUserId = E.igUserId.value.trim();
+  const recipientId = E.recipientId.value.trim();
+  const accessToken = E.accessToken.value.trim();
+
+  if (!igUserId || !recipientId || !accessToken) {
+    E.fetchStatus.textContent = 'กรอก IG User ID, Recipient ID, Access Token ก่อนดึงแชท';
     return;
+  }
+
+  E.fetchStatus.textContent = 'กำลังดึงแชทจาก IG...';
+
+  try {
+    const res = await fetch('/api/fetch-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ igUserId, recipientId, accessToken })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      E.fetchStatus.textContent = `ดึงแชทไม่สำเร็จ: ${data.error || 'unknown error'}`;
+      return;
+    }
+
+    latestMessages = data.messages || [];
+    renderHistory(latestMessages);
+    E.fetchStatus.textContent = `ดึงสำเร็จ ${latestMessages.length} ข้อความ`;
+    generateOutput();
+  } catch (err) {
+    E.fetchStatus.textContent = `ดึงแชทไม่สำเร็จ: ${err.message}`;
   }
 }
 
@@ -112,18 +172,15 @@ window.addEventListener('message', (event) => {
   const payload = event.data || {};
   if (payload.type !== 'ig_oauth_success') return;
 
-  if (payload.accessToken) {
-    E.accessToken.value = payload.accessToken;
-  }
-  if (payload.igUserId) {
-    E.igUserId.value = payload.igUserId;
-  }
+  if (payload.accessToken) E.accessToken.value = payload.accessToken;
+  if (payload.igUserId) E.igUserId.value = payload.igUserId;
 
   E.connectStatus.textContent = 'เชื่อมต่อ Instagram สำเร็จ ได้ access token แล้ว';
 });
 
 E.genBtn.addEventListener('click', generateOutput);
 E.connectBtn.addEventListener('click', connectInstagram);
+E.fetchBtn.addEventListener('click', fetchChatHistory);
 
 E.sendBtn.addEventListener('click', async () => {
   if (!lastOutput) generateOutput();
@@ -140,7 +197,7 @@ E.sendBtn.addEventListener('click', async () => {
 
   const message = (lastOutput?.replies?.[idx] || '').trim();
   if (!message) {
-    E.sendStatus.textContent = 'ยังไม่มีข้อความที่จะส่ง ลองกด Generate JSON ก่อน';
+    E.sendStatus.textContent = 'ยังไม่มีข้อความที่จะส่ง ลองดึงแชทและ Generate ก่อน';
     return;
   }
 
