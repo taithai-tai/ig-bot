@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IG DM Reply Helper</title>
+    <style>
+      :root { color-scheme: light; }
+      body {
+        margin: 0;
+        font-family: "Noto Sans Thai", system-ui, -apple-system, sans-serif;
+        background: #f6f7fb;
+        color: #111827;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 28px auto;
+        padding: 0 16px 36px;
+      }
+      h1 { margin: 0 0 8px; font-size: 1.55rem; }
+      p { margin: 0 0 18px; color: #4b5563; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      label { display: block; font-size: .9rem; margin-bottom: 6px; color: #374151; }
+      input, select, textarea {
+        width: 100%;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        padding: 10px;
+        box-sizing: border-box;
+        font-size: .95rem;
+        background: #fff;
+      }
+      textarea { min-height: 110px; resize: vertical; }
+      .card {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 16px;
+        margin-top: 14px;
+      }
+      button {
+        margin-top: 14px;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        background: #2563eb;
+        color: #fff;
+        font-weight: 600;
+      }
+      pre {
+        background: #0b1220;
+        color: #dbeafe;
+        border-radius: 12px;
+        padding: 14px;
+        overflow: auto;
+        min-height: 150px;
+      }
+      .hint { font-size: .86rem; color: #6b7280; margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <h1>ตัวช่วยเขียนคำตอบ IG DM</h1>
+      <p>ใส่ persona + ข้อความล่าสุด แล้วระบบจะสร้างผลลัพธ์ JSON ตามรูปแบบที่ต้องการ</p>
+
+      <section class="card">
+        <div class="grid">
+          <div>
+            <label for="callThem">callThem</label>
+            <input id="callThem" placeholder="เช่น เธอ / ที่รัก / มึง" />
+          </div>
+          <div>
+            <label for="callSelf">callSelf</label>
+            <input id="callSelf" placeholder="เช่น เรา / เค้า / ผม" />
+          </div>
+          <div>
+            <label for="tone">tone</label>
+            <select id="tone">
+              <option>อบอุ่น</option>
+              <option>น่ารัก</option>
+              <option selected>เพื่อน</option>
+              <option>สุภาพ</option>
+              <option>อ้อน</option>
+            </select>
+          </div>
+          <div>
+            <label for="length">length</label>
+            <select id="length">
+              <option>สั้น</option>
+              <option selected>กลาง</option>
+              <option>ยาว</option>
+            </select>
+          </div>
+          <div>
+            <label for="ending">ending</label>
+            <select id="ending">
+              <option selected>ไม่มี</option>
+              <option>นะ</option>
+              <option>ครับ</option>
+              <option>ค่ะ</option>
+              <option>นุ่ม ๆ</option>
+            </select>
+          </div>
+          <div>
+            <label for="emoji">emoji</label>
+            <select id="emoji">
+              <option>ไม่ใช้</option>
+              <option selected>นิดหน่อย</option>
+              <option>น่ารัก</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <label for="specialRule">specialRule</label>
+          <input id="specialRule" placeholder="กฎเสริม เช่น ห้ามใช้คำว่า คิดถึง" />
+        </div>
+        <div style="margin-top:12px">
+          <label for="latest">ข้อความล่าสุดจากอีกฝ่าย</label>
+          <textarea id="latest" placeholder="พิมพ์ข้อความล่าสุดที่อยากให้ช่วยตอบ..."></textarea>
+        </div>
+        <button id="genBtn">Generate JSON</button>
+        <div class="hint">ผลลัพธ์จะเป็น JSON เท่านั้น: insight + replies 3 แบบ</div>
+      </section>
+
+      <section class="card">
+        <label>Output</label>
+        <pre id="output">{
+  "insight": "...",
+  "replies": ["...", "...", "..."]
+}</pre>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
