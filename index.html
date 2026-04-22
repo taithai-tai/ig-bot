@@ -16,8 +16,9 @@
       textarea { min-height:100px; resize:vertical; }
       button { margin-top:10px; border:0; border-radius:10px; padding:10px 14px; background:#2563eb; color:#fff; font-weight:700; cursor:pointer; }
       button.secondary { background:#059669; margin-left:8px; }
+      button.ig { background:#c026d3; margin-left:8px; }
       pre { background:#0f172a; color:#e2e8f0; padding:12px; border-radius:10px; min-height:130px; overflow:auto; }
-      #sendStatus { margin-top:10px; font-size:.9rem; }
+      #sendStatus, #connectStatus { margin-top:10px; font-size:.9rem; }
     </style>
   </head>
   <body>
@@ -47,6 +48,8 @@
           <div><label for="recipientId">Recipient ID (PSID/IGSID)</label><input id="recipientId" placeholder="USER_ID ที่คุยกับเรา" /></div>
         </div>
         <div style="margin-top:10px"><label for="accessToken">Page/IG Access Token</label><input id="accessToken" type="password" placeholder="EAAG..." /></div>
+        <button class="ig" id="connectBtn">Connect Instagram</button>
+        <div id="connectStatus"></div>
         <div style="margin-top:10px"><label for="replyIndex">เลือกข้อความที่จะส่ง</label>
           <select id="replyIndex"><option value="0">Reply #1 (ปลอดภัย)</option><option value="1">Reply #2 (มีอารมณ์)</option><option value="2">Reply #3 (ขี้เล่น)</option></select>
         </div>

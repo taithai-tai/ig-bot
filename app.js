@@ -14,7 +14,9 @@ const E = {
   accessToken: document.getElementById('accessToken'),
   replyIndex: document.getElementById('replyIndex'),
   sendBtn: document.getElementById('sendBtn'),
-  sendStatus: document.getElementById('sendStatus')
+  sendStatus: document.getElementById('sendStatus'),
+  connectBtn: document.getElementById('connectBtn'),
+  connectStatus: document.getElementById('connectStatus')
 };
 
 let lastOutput = null;
@@ -54,14 +56,13 @@ function makeInsight(mood, latest) {
   return 'อีกฝ่ายคุยเล่นสบาย ๆ ตอบแบบกันเองได้';
 }
 
-function buildReplies({ callThem, callSelf, tone, length, ending, emoji, mood }) {
+function buildReplies({ callThem, callSelf, length, ending, emoji, mood }) {
   const end = endingText(ending);
   const self = callSelf || 'เรา';
   const them = callThem || 'เธอ';
-  const tonePrefix = tone === 'สุภาพ' ? `${them}` : `${them}`;
 
   const base = {
-    sad: [`${tonePrefix}โอเคนะ ${self}ฟังอยู่`, `${self}อยู่ตรงนี้นะ ไม่ต้องฝืนเลย`, `กอด ๆ ก่อน เดี๋ยวค่อยเล่าให้${self}ฟังก็ได้`],
+    sad: [`${them}โอเคนะ ${self}ฟังอยู่`, `${self}อยู่ตรงนี้นะ ไม่ต้องฝืนเลย`, `กอด ๆ ก่อน เดี๋ยวค่อยเล่าให้${self}ฟังก็ได้`],
     question: [`${self}ตอบได้เลย ถามมา`, `ได้สิ ${self}ช่วยคิดให้`, `โอเค เดี๋ยว${self}ตอบให้ตรง ๆ เลย`],
     cute: [`งั้นมาใกล้ ๆ ${self}หน่อย`, `${self}ก็คิดถึง${them}เหมือนกัน`, `ถ้าอ้อนแบบนี้ ${self}แพ้เลย`],
     playful: [`ฮ่า ๆ มาแนวนี้เลยนะ`, `เอาดี ๆ ${them}กำลังแกล้ง${self}ใช่ไหม`, `โอเค งั้นคุยกันยาว ๆ`],
@@ -87,7 +88,6 @@ function generateOutput() {
   let replies = buildReplies({
     callThem: E.callThem.value.trim(),
     callSelf: E.callSelf.value.trim(),
-    tone: E.tone.value,
     length: E.length.value,
     ending: E.ending.value,
     emoji: E.emoji.value,
@@ -98,7 +98,32 @@ function generateOutput() {
   E.output.textContent = JSON.stringify(lastOutput, null, 2);
 }
 
+function connectInstagram() {
+  E.connectStatus.textContent = 'กำลังเปิดหน้าเชื่อมต่อ Instagram...';
+  const popup = window.open('/auth/instagram/start', 'ig-connect', 'width=520,height=720');
+  if (!popup) {
+    E.connectStatus.textContent = 'เบราว์เซอร์บล็อก popup กรุณาอนุญาตก่อน';
+    return;
+  }
+}
+
+window.addEventListener('message', (event) => {
+  if (event.origin !== window.location.origin) return;
+  const payload = event.data || {};
+  if (payload.type !== 'ig_oauth_success') return;
+
+  if (payload.accessToken) {
+    E.accessToken.value = payload.accessToken;
+  }
+  if (payload.igUserId) {
+    E.igUserId.value = payload.igUserId;
+  }
+
+  E.connectStatus.textContent = 'เชื่อมต่อ Instagram สำเร็จ ได้ access token แล้ว';
+});
+
 E.genBtn.addEventListener('click', generateOutput);
+E.connectBtn.addEventListener('click', connectInstagram);
 
 E.sendBtn.addEventListener('click', async () => {
   if (!lastOutput) generateOutput();

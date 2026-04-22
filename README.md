@@ -6,10 +6,18 @@
 
 ```bash
 npm install
-npm start
+META_APP_ID=YOUR_APP_ID META_APP_SECRET=YOUR_APP_SECRET npm start
 ```
 
 เปิด `http://localhost:3000`
+
+## ปุ่ม Connect Instagram
+
+ปุ่ม `Connect Instagram` จะเปิด OAuth ของ Meta และดึง access token กลับมาใส่ในฟอร์มให้อัตโนมัติ
+
+ต้องตั้งค่า Redirect URI ใน Meta Developer ให้ตรงกับ:
+
+- `http://localhost:3000/auth/instagram/callback`
 
 ## สิ่งที่ต้องมีเพื่อส่ง DM จริง
 
