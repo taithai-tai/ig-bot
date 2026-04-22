@@ -58,14 +58,12 @@ app.get('/auth/instagram/callback', async (req, res) => {
 
     return res.send(`<!doctype html><html><body>
       <script>
-        window.opener && window.opener.postMessage({
-          type: 'ig_oauth_success',
-          accessToken: ${JSON.stringify(accessToken)},
-          igUserId: ${JSON.stringify(igUserId)}
-        }, window.location.origin);
-        window.close();
+        localStorage.setItem('ig_access_token', ${JSON.stringify(accessToken)});
+        localStorage.setItem('ig_connect_status', 'ok');
+        localStorage.setItem('ig_ig_user_id', ${JSON.stringify(igUserId)});
+        window.location.href = '/';
       </script>
-      เชื่อมต่อสำเร็จ คุณสามารถปิดหน้านี้ได้
+      เชื่อมต่อสำเร็จ กำลังกลับหน้าแอป...
     </body></html>`);
   } catch (error) {
     return res.status(500).send(`OAuth error: ${error.message}`);

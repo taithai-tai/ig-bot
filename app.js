@@ -10,7 +10,6 @@ const E = {
   genBtn: document.getElementById('genBtn'),
   igUserId: document.getElementById('igUserId'),
   recipientId: document.getElementById('recipientId'),
-  appId: document.getElementById('appId'),
   accessToken: document.getElementById('accessToken'),
   replyIndex: document.getElementById('replyIndex'),
   sendBtn: document.getElementById('sendBtn'),
@@ -90,24 +89,8 @@ function generateOutput() {
 }
 
 function connectInstagram() {
-  const appId = E.appId.value.trim();
-  if (!appId) {
-    E.connectStatus.textContent = 'กรอก Meta App ID ก่อน';
-    return;
-  }
-
-  localStorage.setItem('ig_app_id', appId);
-
-  const redirectUri = `${window.location.origin}/oauth-callback.html`;
-  const scope = ['instagram_basic', 'instagram_manage_messages', 'pages_show_list', 'pages_messaging'].join(',');
-  const authUrl = new URL('https://www.facebook.com/v22.0/dialog/oauth');
-  authUrl.searchParams.set('client_id', appId);
-  authUrl.searchParams.set('redirect_uri', redirectUri);
-  authUrl.searchParams.set('response_type', 'token');
-  authUrl.searchParams.set('scope', scope);
-
   E.connectStatus.textContent = 'กำลังพาไปเชื่อมต่อ Instagram...';
-  window.location.href = authUrl.toString();
+  window.location.href = '/auth/instagram/start';
 }
 
 async function hydrateFromToken(token) {
@@ -157,19 +140,17 @@ async function fetchChatHistory() {
 }
 
 async function initConnectionState() {
-  const savedAppId = localStorage.getItem('ig_app_id');
-  if (savedAppId && !E.appId.value) E.appId.value = savedAppId;
-
   const status = localStorage.getItem('ig_connect_status');
   if (status?.startsWith('error:')) {
     E.connectStatus.textContent = `เชื่อมต่อไม่สำเร็จ: ${status.replace('error:', '')}`;
-    localStorage.removeItem('ig_connect_status');
   }
+
+  const savedIgUserId = localStorage.getItem('ig_ig_user_id');
+  if (savedIgUserId && !E.igUserId.value) E.igUserId.value = savedIgUserId;
 
   const token = localStorage.getItem('ig_access_token');
   if (token) {
     await hydrateFromToken(token);
-    localStorage.removeItem('ig_connect_status');
   }
 }
 
