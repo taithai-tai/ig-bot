@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="th">
+  <head><meta charset="UTF-8" /><title>Instagram Connect Callback</title></head>
+  <body>
+    <script>
+      const hash = new URLSearchParams(window.location.hash.slice(1));
+      const accessToken = hash.get('access_token');
+      const error = hash.get('error') || hash.get('error_description');
+
+      if (accessToken) {
+        localStorage.setItem('ig_access_token', accessToken);
+        localStorage.setItem('ig_connect_status', 'ok');
+        window.location.href = '/';
+      } else {
+        localStorage.setItem('ig_connect_status', `error:${error || 'unknown error'}`);
+        window.location.href = '/';
+      }
+    </script>
+    กำลังกลับไปหน้าแอป...
+  </body>
+</html>
