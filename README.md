@@ -1,55 +1,38 @@
 # IG DM Reply Helper (Web)
 
-เว็บช่วยสร้างคำตอบ DM จาก "แชทจริงใน IG" (ทั้งเขาพิมพ์มา + เราพิมพ์ไป) และส่งข้อความกลับไปหาอีกฝ่ายได้ทันที
+เว็บช่วยสร้างคำตอบ DM จาก "แชทจริงใน IG" (ทั้งเขาพิมพ์มา + เราพิมพ์ไป) และส่งข้อความกลับไปหาอีกฝ่าย โดยใช้ Instagram/Meta Graph API
 
-## วิธีรันบนเซิร์ฟเวอร์
+## วิธีรัน
 
 ```bash
 npm install
-META_APP_ID=YOUR_META_APP_ID META_APP_SECRET=YOUR_META_APP_SECRET \
-IG_CLIENT_ID=YOUR_IG_CLIENT_ID IG_CLIENT_SECRET=YOUR_IG_CLIENT_SECRET \
-npm start
+META_APP_ID=YOUR_META_APP_ID META_APP_SECRET=YOUR_META_APP_SECRET npm start
 ```
 
 เปิด `http://localhost:3000`
 
-## Connect Instagram (แก้ปัญหา 404 บน GitHub Pages)
+## Connect Instagram (ใช้ API)
 
-สาเหตุ 404 ในภาพเกิดจาก GitHub Pages ไม่มี backend route (`/auth/instagram-direct/start`)
+ปุ่ม `Connect Instagram (API)` ใช้ OAuth ผ่าน server API:
 
-ตอนนี้ระบบเชื่อมต่อแบบนี้:
+1. ไปที่ `/auth/instagram/start`
+2. รับ callback ที่ `/auth/instagram/callback`
+3. server เก็บ access token ลง localStorage บน browser
+4. frontend เรียก `/api/resolve-ig-user` เพื่อดึง `IG User ID` อัตโนมัติ
 
-1. ถ้าเป็น static host (GitHub Pages) และมี `window.IG_APP_ID` ใน `config.js`:
-   - ปุ่ม `Connect Instagram` จะพาไป Facebook OAuth โดยตรง
-   - callback กลับมาที่ `oauth-callback.html`
-2. ถ้าไม่มี `window.IG_APP_ID`:
-   - fallback ไปที่ server route `/auth/instagram-direct/start` (ใช้ตอนรัน Node server)
+## การดึง/ส่งข้อมูลทั้งหมดใช้ API
 
-### ต้องตั้งค่าอะไรเพิ่มสำหรับ GitHub Pages
+- ดึง IG User ID: `POST /api/resolve-ig-user`
+- ดึงแชท: `POST /api/fetch-chat`
+- ส่งข้อความ: `POST /api/send-dm`
 
-แก้ไฟล์ `config.js`:
+ทั้งหมดวิ่งผ่าน Graph API จาก backend ไม่มีการดึงข้อมูลแบบ scrape จากหน้าเว็บ
 
-```js
-window.IG_APP_ID = 'YOUR_META_APP_ID';
-```
-
-แล้วตั้ง Valid OAuth Redirect URI ใน Meta App เป็น:
-
-- `https://<your-github-pages-domain>/oauth-callback.html`
-
-## วิธีที่ระบบดึงข้อมูลแชท
-
-เมื่อกด `ดึงแชทจาก IG` backend จะเรียก:
-
-1. `/{igUserId}/conversations` เพื่อหาห้องแชทของ recipient
-2. `/{conversationId}/messages` เพื่อโหลดทั้งข้อความขาเข้า/ขาออก
-
-## คุณต้องเตรียมอะไรบ้าง
+## ต้องเตรียมอะไรบ้าง
 
 - Instagram Professional/Business account
 - IG ผูกกับ Facebook Page
-- Meta App ที่ได้สิทธิ์ messaging (สำหรับดึงแชท/ส่ง DM)
-- Instagram App credentials (`IG_CLIENT_ID`, `IG_CLIENT_SECRET`) สำหรับ direct login ฝั่ง server
-- `Recipient ID` ของคนที่คุยกับคุณ
+- Meta App ที่มีสิทธิ์ `instagram_manage_messages`, `pages_messaging`, `pages_show_list`, `instagram_basic`
+- `Recipient ID` ของคนที่คุยด้วย
 
-> หมายเหตุ: direct login ได้ token สำหรับการยืนยันตัวตน ส่วนการดึง/ส่ง DM ยังต้องมีสิทธิ์ messaging ของ Meta Graph API
+> หมายเหตุ: หากสิทธิ์ไม่ครบหรือแอปยังไม่ผ่าน review จะ connect/dึงแชท/ส่ง DM ไม่สำเร็จ

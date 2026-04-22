@@ -36,6 +36,7 @@ function detectMood(text) {
 const endingText = (ending) => (ending === 'ไม่มี' ? '' : ending === 'นุ่ม ๆ' ? 'น้า' : ending);
 const emojiPack = (mode, variant) => (mode === 'ไม่ใช้' ? '' : mode === 'นิดหน่อย' ? (variant === 0 ? ' 🙂' : '') : [' 🫶', ' 😊', ' ✨'][variant] || ' 😊');
 const fitLength = (text, length) => (length === 'สั้น' ? text : length === 'กลาง' ? `${text} เดี๋ยวค่อยคุยต่อได้` : `${text} เดี๋ยวเราอยู่ตรงนี้นะ ถ้าอยากเล่าเพิ่มก็บอกได้เลย`);
+const applySpecialRule = (replies, specialRule) => (specialRule.trim() ? replies.map((line) => `${line} (${specialRule})`) : replies);
 
 function makeInsight(mood) {
   if (!latestMessages.length) return 'ยังไม่มีแชทจาก IG ให้ดึงแชทก่อน แล้วค่อยสร้างคำตอบ';
@@ -59,8 +60,6 @@ function buildReplies({ callThem, callSelf, length, ending, emoji, mood }) {
   return base[mood].map((raw, i) => `${fitLength(raw, length)}${end}${emojiPack(emoji, i)}`);
 }
 
-const applySpecialRule = (replies, specialRule) => (specialRule.trim() ? replies.map((line) => `${line} (${specialRule})`) : replies);
-
 function renderHistory(messages) {
   E.historyBox.textContent = messages.length
     ? messages.map((m) => `${m.direction === 'inbound' ? 'เขา' : 'ฉัน'}: ${m.text || '[ไม่มีข้อความ]'} (${m.created_time || '-'})`).join('\n')
@@ -76,43 +75,28 @@ function generateOutput() {
 }
 
 function connectInstagram() {
-  E.connectStatus.textContent = 'กำลังพาไปหน้าอนุญาต Instagram...';
-
-  const appId = window.IG_APP_ID || localStorage.getItem('ig_app_id') || '';
-  const callbackUrl = new URL('oauth-callback.html', window.location.href).toString();
+  E.connectStatus.textContent = 'กำลังเชื่อมต่อผ่าน API...';
   localStorage.setItem('ig_return_to', window.location.href);
-
-  if (appId) {
-    const authUrl = new URL('https://www.facebook.com/v22.0/dialog/oauth');
-    authUrl.searchParams.set('client_id', appId);
-    authUrl.searchParams.set('redirect_uri', callbackUrl);
-    authUrl.searchParams.set('response_type', 'token');
-    authUrl.searchParams.set('scope', 'instagram_basic,pages_show_list,pages_messaging,instagram_manage_messages');
-    window.location.href = authUrl.toString();
-    return;
-  }
-
-  window.location.href = '/auth/instagram-direct/start';
+  window.location.href = '/auth/instagram/start';
 }
 
-async function hydrateFromToken(token) {
+async function hydrateViaApi(token) {
   E.accessToken.value = token;
-  try {
-    const meUrl = new URL('https://graph.facebook.com/v22.0/me/accounts');
-    meUrl.searchParams.set('fields', 'instagram_business_account{id,name},name,id');
-    meUrl.searchParams.set('access_token', token);
-    const res = await fetch(meUrl);
-    const data = await res.json();
-    const firstPage = data?.data?.find((p) => p.instagram_business_account?.id);
-    if (firstPage?.instagram_business_account?.id) {
-      E.igUserId.value = firstPage.instagram_business_account.id;
-      E.connectStatus.textContent = 'Connect Instagram สำเร็จ และดึง IG User ID อัตโนมัติแล้ว';
-      return;
-    }
-    E.connectStatus.textContent = 'Connect สำเร็จ แต่ยังดึง IG User ID ไม่ได้ (กรอกเองได้)';
-  } catch {
-    E.connectStatus.textContent = 'Connect สำเร็จ แต่เช็คบัญชีไม่ผ่าน (กรอก IG User ID เองได้)';
+  const res = await fetch('/api/resolve-ig-user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken: token })
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    E.connectStatus.textContent = `Connect สำเร็จ แต่ดึง IG User ID ไม่ได้: ${data.error || 'unknown error'}`;
+    return;
   }
+  if (data.igUserId) {
+    E.igUserId.value = data.igUserId;
+    localStorage.setItem('ig_ig_user_id', data.igUserId);
+  }
+  E.connectStatus.textContent = 'Connect Instagram สำเร็จผ่าน API และพร้อมดึงแชทแล้ว';
 }
 
 async function fetchChatHistory() {
@@ -121,7 +105,7 @@ async function fetchChatHistory() {
   const accessToken = E.accessToken.value.trim();
   if (!igUserId || !recipientId || !accessToken) return (E.fetchStatus.textContent = 'กรอก IG User ID, Recipient ID, Access Token ก่อนดึงแชท');
 
-  E.fetchStatus.textContent = 'กำลังดึงแชทจาก IG...';
+  E.fetchStatus.textContent = 'กำลังดึงแชทจาก IG API...';
   try {
     const res = await fetch('/api/fetch-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ igUserId, recipientId, accessToken }) });
     const data = await res.json();
@@ -138,17 +122,12 @@ async function fetchChatHistory() {
 async function initConnectionState() {
   const status = localStorage.getItem('ig_connect_status');
   if (status?.startsWith('error:')) E.connectStatus.textContent = `เชื่อมต่อไม่สำเร็จ: ${status.replace('error:', '')}`;
+
   const savedIgUserId = localStorage.getItem('ig_ig_user_id');
   if (savedIgUserId && !E.igUserId.value) E.igUserId.value = savedIgUserId;
 
-  const directToken = localStorage.getItem('ig_direct_access_token');
-  if (directToken) {
-    E.accessToken.value = directToken;
-    E.connectStatus.textContent = 'Connect โดย Instagram โดยตรงสำเร็จแล้ว';
-  }
-
   const token = localStorage.getItem('ig_access_token');
-  if (token) await hydrateFromToken(token);
+  if (token) await hydrateViaApi(token);
 }
 
 E.genBtn.addEventListener('click', generateOutput);
