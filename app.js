@@ -90,7 +90,7 @@ function generateOutput() {
 
 function connectInstagram() {
   E.connectStatus.textContent = 'กำลังพาไปเชื่อมต่อ Instagram...';
-  window.location.href = '/auth/instagram/start';
+  window.location.href = '/auth/instagram-direct/start';
 }
 
 async function hydrateFromToken(token) {
@@ -147,6 +147,12 @@ async function initConnectionState() {
 
   const savedIgUserId = localStorage.getItem('ig_ig_user_id');
   if (savedIgUserId && !E.igUserId.value) E.igUserId.value = savedIgUserId;
+
+  const directToken = localStorage.getItem('ig_direct_access_token');
+  if (directToken) {
+    E.accessToken.value = directToken;
+    E.connectStatus.textContent = 'Connect โดย Instagram โดยตรงสำเร็จแล้ว';
+  }
 
   const token = localStorage.getItem('ig_access_token');
   if (token) {

@@ -7,9 +7,62 @@ const port = process.env.PORT || 3000;
 const APP_ID = process.env.META_APP_ID || '';
 const APP_SECRET = process.env.META_APP_SECRET || '';
 const REDIRECT_URI = process.env.META_REDIRECT_URI || `http://localhost:${port}/auth/instagram/callback`;
+const IG_CLIENT_ID = process.env.IG_CLIENT_ID || '';
+const IG_CLIENT_SECRET = process.env.IG_CLIENT_SECRET || '';
+const IG_DIRECT_REDIRECT_URI = process.env.IG_DIRECT_REDIRECT_URI || `http://localhost:${port}/auth/instagram-direct/callback`;
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname)));
+
+
+app.get('/auth/instagram-direct/start', (req, res) => {
+  if (!IG_CLIENT_ID) return res.status(500).send('Missing IG_CLIENT_ID in server env');
+
+  const url = new URL('https://api.instagram.com/oauth/authorize');
+  url.searchParams.set('client_id', IG_CLIENT_ID);
+  url.searchParams.set('redirect_uri', IG_DIRECT_REDIRECT_URI);
+  url.searchParams.set('response_type', 'code');
+  url.searchParams.set('scope', 'user_profile,user_media');
+  return res.redirect(url.toString());
+});
+
+app.get('/auth/instagram-direct/callback', async (req, res) => {
+  const code = req.query.code;
+  if (!code) return res.status(400).send('Missing code');
+  if (!IG_CLIENT_ID || !IG_CLIENT_SECRET) return res.status(500).send('Missing IG_CLIENT_ID or IG_CLIENT_SECRET');
+
+  try {
+    const tokenRes = await fetch('https://api.instagram.com/oauth/access_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: IG_CLIENT_ID,
+        client_secret: IG_CLIENT_SECRET,
+        grant_type: 'authorization_code',
+        redirect_uri: IG_DIRECT_REDIRECT_URI,
+        code: String(code)
+      })
+    });
+
+    const tokenData = await tokenRes.json();
+    if (!tokenRes.ok || tokenData.error_type || !tokenData.access_token) {
+      return res.status(400).send(`Instagram direct token exchange failed: ${tokenData?.error_message || 'unknown error'}`);
+    }
+
+    return res.send(`<!doctype html><html><body>
+      <script>
+        localStorage.setItem('ig_access_token', ${JSON.stringify('')});
+        localStorage.setItem('ig_direct_access_token', ${JSON.stringify(tokenData.access_token)});
+        localStorage.setItem('ig_connect_status', 'ok_direct');
+        localStorage.setItem('ig_ig_user_id', ${JSON.stringify(String(tokenData.user_id || ''))});
+        window.location.href = '/';
+      </script>
+      เชื่อมต่อ Instagram (direct) สำเร็จ กำลังกลับหน้าแอป...
+    </body></html>`);
+  } catch (error) {
+    return res.status(500).send(`Instagram direct OAuth error: ${error.message}`);
+  }
+});
 
 app.get('/auth/instagram/start', (req, res) => {
   if (!APP_ID) {

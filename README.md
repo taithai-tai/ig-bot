@@ -6,23 +6,23 @@
 
 ```bash
 npm install
-META_APP_ID=YOUR_APP_ID META_APP_SECRET=YOUR_APP_SECRET npm start
+META_APP_ID=YOUR_META_APP_ID META_APP_SECRET=YOUR_META_APP_SECRET \
+IG_CLIENT_ID=YOUR_IG_CLIENT_ID IG_CLIENT_SECRET=YOUR_IG_CLIENT_SECRET \
+npm start
 ```
 
 เปิด `http://localhost:3000`
 
-## Connect Instagram (อัตโนมัติ)
+## Connect Instagram (Direct)
 
-ปุ่ม `Connect Instagram` จะพาไป OAuth ทันทีโดยอัตโนมัติ (ไม่ต้องกรอกอะไรเพิ่มในหน้าเว็บ)
+ปุ่ม `Connect Instagram (Direct)` จะพาไปหน้าอนุญาตของ Instagram โดยตรง (ไม่ต้องกรอกอะไรเพิ่ม)
 
-เงื่อนไขที่ต้องตั้งใน Meta App:
+- ใช้ endpoint: `/auth/instagram-direct/start`
+- callback: `/auth/instagram-direct/callback`
 
-- Valid OAuth Redirect URI: `http://localhost:3000/auth/instagram/callback`
+ต้องตั้งค่า Redirect URI ใน Instagram App ให้ตรง:
 
-หลัง connect สำเร็จ ระบบจะบันทึกและเติมให้เอง:
-
-- `access token`
-- `IG User ID`
+- `http://localhost:3000/auth/instagram-direct/callback`
 
 ## วิธีที่ระบบดึงข้อมูลแชท
 
@@ -35,7 +35,8 @@ META_APP_ID=YOUR_APP_ID META_APP_SECRET=YOUR_APP_SECRET npm start
 
 - Instagram Professional/Business account
 - IG ผูกกับ Facebook Page
-- Meta App ที่ได้สิทธิ์ messaging
+- Meta App ที่ได้สิทธิ์ messaging (สำหรับดึงแชท/ส่ง DM)
+- Instagram App credentials (`IG_CLIENT_ID`, `IG_CLIENT_SECRET`) สำหรับ direct login
 - `Recipient ID` ของคนที่คุยกับคุณ
 
-> หมายเหตุ: ถ้า permission/token ยังไม่ผ่าน review หรือ scope ไม่ครบ ระบบจะดึงแชท/ส่งข้อความไม่สำเร็จและแสดง error
+> หมายเหตุ: direct login ได้ token สำหรับการยืนยันตัวตนกับ Instagram โดยตรง ส่วนการดึง DM/ส่ง DM ยังต้องใช้สิทธิ์ messaging ของ Meta Graph API
