@@ -1,0 +1,139 @@
+const E = {
+  callThem: document.getElementById('callThem'),
+  callSelf: document.getElementById('callSelf'),
+  tone: document.getElementById('tone'),
+  length: document.getElementById('length'),
+  ending: document.getElementById('ending'),
+  emoji: document.getElementById('emoji'),
+  specialRule: document.getElementById('specialRule'),
+  latest: document.getElementById('latest'),
+  output: document.getElementById('output'),
+  genBtn: document.getElementById('genBtn'),
+  igUserId: document.getElementById('igUserId'),
+  recipientId: document.getElementById('recipientId'),
+  accessToken: document.getElementById('accessToken'),
+  replyIndex: document.getElementById('replyIndex'),
+  sendBtn: document.getElementById('sendBtn'),
+  sendStatus: document.getElementById('sendStatus')
+};
+
+let lastOutput = null;
+
+function detectMood(text) {
+  const t = text.toLowerCase();
+  if (!t.trim()) return 'neutral';
+  if (['เศร้า', 'เหนื่อย', 'แย่', 'ร้องไห้', 'เสียใจ', 'ท้อ'].some((w) => t.includes(w))) return 'sad';
+  if (['คิดถึง', 'งอน', 'อ้อน', 'รัก', 'หวง'].some((w) => t.includes(w))) return 'cute';
+  if (['ไหม', 'มั้ย', '?', 'อะไร', 'ทำไม', 'ยังไง', 'ได้ปะ', 'ได้ไหม'].some((w) => t.includes(w))) return 'question';
+  return 'playful';
+}
+
+function endingText(ending) {
+  if (ending === 'ไม่มี') return '';
+  if (ending === 'นุ่ม ๆ') return 'น้า';
+  return ending;
+}
+
+function emojiPack(mode, variant) {
+  if (mode === 'ไม่ใช้') return '';
+  if (mode === 'นิดหน่อย') return variant === 0 ? ' 🙂' : '';
+  return [' 🫶', ' 😊', ' ✨'][variant] || ' 😊';
+}
+
+function fitLength(text, length) {
+  if (length === 'สั้น') return text;
+  if (length === 'กลาง') return `${text} เดี๋ยวค่อยคุยต่อได้`;
+  return `${text} เดี๋ยวเราอยู่ตรงนี้นะ ถ้าอยากเล่าเพิ่มก็บอกได้เลย`;
+}
+
+function makeInsight(mood, latest) {
+  if (!latest.trim()) return 'อีกฝ่ายยังไม่ได้ส่งข้อความชัดเจน ควรเปิดบทสนทนาแบบสบาย ๆ ก่อน';
+  if (mood === 'sad') return 'อีกฝ่ายดูอารมณ์ตกหรือเหนื่อยอยู่ ต้องการคำตอบที่อ่อนโยน';
+  if (mood === 'question') return 'อีกฝ่ายกำลังถาม ควรตอบให้ตรงและชัด';
+  if (mood === 'cute') return 'อีกฝ่ายมาโหมดอ้อนหรือหวาน ๆ ตอบน่ารักได้';
+  return 'อีกฝ่ายคุยเล่นสบาย ๆ ตอบแบบกันเองได้';
+}
+
+function buildReplies({ callThem, callSelf, tone, length, ending, emoji, mood }) {
+  const end = endingText(ending);
+  const self = callSelf || 'เรา';
+  const them = callThem || 'เธอ';
+  const tonePrefix = tone === 'สุภาพ' ? `${them}` : `${them}`;
+
+  const base = {
+    sad: [`${tonePrefix}โอเคนะ ${self}ฟังอยู่`, `${self}อยู่ตรงนี้นะ ไม่ต้องฝืนเลย`, `กอด ๆ ก่อน เดี๋ยวค่อยเล่าให้${self}ฟังก็ได้`],
+    question: [`${self}ตอบได้เลย ถามมา`, `ได้สิ ${self}ช่วยคิดให้`, `โอเค เดี๋ยว${self}ตอบให้ตรง ๆ เลย`],
+    cute: [`งั้นมาใกล้ ๆ ${self}หน่อย`, `${self}ก็คิดถึง${them}เหมือนกัน`, `ถ้าอ้อนแบบนี้ ${self}แพ้เลย`],
+    playful: [`ฮ่า ๆ มาแนวนี้เลยนะ`, `เอาดี ๆ ${them}กำลังแกล้ง${self}ใช่ไหม`, `โอเค งั้นคุยกันยาว ๆ`],
+    neutral: [`ว่าไง ${them}`, `${self}อยู่ ๆ`, `ทักมาได้เลย`]
+  };
+
+  return base[mood].map((raw, i) => {
+    let line = fitLength(raw, length);
+    if (end) line += end;
+    line += emojiPack(emoji, i);
+    return line;
+  });
+}
+
+function applySpecialRule(replies, specialRule) {
+  if (!specialRule.trim()) return replies;
+  return replies.map((line) => `${line} (${specialRule})`);
+}
+
+function generateOutput() {
+  const latest = E.latest.value || '';
+  const mood = detectMood(latest);
+  let replies = buildReplies({
+    callThem: E.callThem.value.trim(),
+    callSelf: E.callSelf.value.trim(),
+    tone: E.tone.value,
+    length: E.length.value,
+    ending: E.ending.value,
+    emoji: E.emoji.value,
+    mood
+  });
+  replies = applySpecialRule(replies, E.specialRule.value);
+  lastOutput = { insight: makeInsight(mood, latest), replies };
+  E.output.textContent = JSON.stringify(lastOutput, null, 2);
+}
+
+E.genBtn.addEventListener('click', generateOutput);
+
+E.sendBtn.addEventListener('click', async () => {
+  if (!lastOutput) generateOutput();
+
+  const igUserId = E.igUserId.value.trim();
+  const recipientId = E.recipientId.value.trim();
+  const accessToken = E.accessToken.value.trim();
+  const idx = Number(E.replyIndex.value || 0);
+
+  if (!igUserId || !recipientId || !accessToken) {
+    E.sendStatus.textContent = 'กรอก IG User ID, Recipient ID, Access Token ให้ครบก่อน';
+    return;
+  }
+
+  const message = (lastOutput?.replies?.[idx] || '').trim();
+  if (!message) {
+    E.sendStatus.textContent = 'ยังไม่มีข้อความที่จะส่ง ลองกด Generate JSON ก่อน';
+    return;
+  }
+
+  E.sendStatus.textContent = 'กำลังส่ง...';
+
+  try {
+    const res = await fetch('/api/send-dm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ igUserId, recipientId, accessToken, message })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      E.sendStatus.textContent = `ส่งไม่สำเร็จ: ${data.error || 'unknown error'}`;
+      return;
+    }
+    E.sendStatus.textContent = `ส่งสำเร็จ message_id: ${data.messageId || '-'}`;
+  } catch (err) {
+    E.sendStatus.textContent = `ส่งไม่สำเร็จ: ${err.message}`;
+  }
+});

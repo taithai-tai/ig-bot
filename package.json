@@ -1,0 +1,13 @@
+{
+  "name": "ig-bot-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "IG DM reply helper with Graph API sender",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
