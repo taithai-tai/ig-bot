@@ -13,16 +13,29 @@ npm start
 
 เปิด `http://localhost:3000`
 
-## Connect Instagram (Direct)
+## Connect Instagram (แก้ปัญหา 404 บน GitHub Pages)
 
-ปุ่ม `Connect Instagram (Direct)` จะพาไปหน้าอนุญาตของ Instagram โดยตรง (ไม่ต้องกรอกอะไรเพิ่ม)
+สาเหตุ 404 ในภาพเกิดจาก GitHub Pages ไม่มี backend route (`/auth/instagram-direct/start`)
 
-- ใช้ endpoint: `/auth/instagram-direct/start`
-- callback: `/auth/instagram-direct/callback`
+ตอนนี้ระบบเชื่อมต่อแบบนี้:
 
-ต้องตั้งค่า Redirect URI ใน Instagram App ให้ตรง:
+1. ถ้าเป็น static host (GitHub Pages) และมี `window.IG_APP_ID` ใน `config.js`:
+   - ปุ่ม `Connect Instagram` จะพาไป Facebook OAuth โดยตรง
+   - callback กลับมาที่ `oauth-callback.html`
+2. ถ้าไม่มี `window.IG_APP_ID`:
+   - fallback ไปที่ server route `/auth/instagram-direct/start` (ใช้ตอนรัน Node server)
 
-- `http://localhost:3000/auth/instagram-direct/callback`
+### ต้องตั้งค่าอะไรเพิ่มสำหรับ GitHub Pages
+
+แก้ไฟล์ `config.js`:
+
+```js
+window.IG_APP_ID = 'YOUR_META_APP_ID';
+```
+
+แล้วตั้ง Valid OAuth Redirect URI ใน Meta App เป็น:
+
+- `https://<your-github-pages-domain>/oauth-callback.html`
 
 ## วิธีที่ระบบดึงข้อมูลแชท
 
@@ -36,7 +49,7 @@ npm start
 - Instagram Professional/Business account
 - IG ผูกกับ Facebook Page
 - Meta App ที่ได้สิทธิ์ messaging (สำหรับดึงแชท/ส่ง DM)
-- Instagram App credentials (`IG_CLIENT_ID`, `IG_CLIENT_SECRET`) สำหรับ direct login
+- Instagram App credentials (`IG_CLIENT_ID`, `IG_CLIENT_SECRET`) สำหรับ direct login ฝั่ง server
 - `Recipient ID` ของคนที่คุยกับคุณ
 
-> หมายเหตุ: direct login ได้ token สำหรับการยืนยันตัวตนกับ Instagram โดยตรง ส่วนการดึง DM/ส่ง DM ยังต้องใช้สิทธิ์ messaging ของ Meta Graph API
+> หมายเหตุ: direct login ได้ token สำหรับการยืนยันตัวตน ส่วนการดึง/ส่ง DM ยังต้องมีสิทธิ์ messaging ของ Meta Graph API

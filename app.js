@@ -59,9 +59,7 @@ function buildReplies({ callThem, callSelf, length, ending, emoji, mood }) {
   return base[mood].map((raw, i) => `${fitLength(raw, length)}${end}${emojiPack(emoji, i)}`);
 }
 
-function applySpecialRule(replies, specialRule) {
-  return specialRule.trim() ? replies.map((line) => `${line} (${specialRule})`) : replies;
-}
+const applySpecialRule = (replies, specialRule) => (specialRule.trim() ? replies.map((line) => `${line} (${specialRule})`) : replies);
 
 function renderHistory(messages) {
   E.historyBox.textContent = messages.length
@@ -72,24 +70,28 @@ function renderHistory(messages) {
 function generateOutput() {
   const latestText = latestMessages[0]?.text || '';
   const mood = detectMood(latestText);
-  const replies = applySpecialRule(
-    buildReplies({
-      callThem: E.callThem.value.trim(),
-      callSelf: E.callSelf.value.trim(),
-      length: E.length.value,
-      ending: E.ending.value,
-      emoji: E.emoji.value,
-      mood
-    }),
-    E.specialRule.value
-  );
-
+  const replies = applySpecialRule(buildReplies({ callThem: E.callThem.value.trim(), callSelf: E.callSelf.value.trim(), length: E.length.value, ending: E.ending.value, emoji: E.emoji.value, mood }), E.specialRule.value);
   lastOutput = { insight: makeInsight(mood), source: { latest_message: latestText, total_messages_loaded: latestMessages.length }, replies };
   E.output.textContent = JSON.stringify(lastOutput, null, 2);
 }
 
 function connectInstagram() {
-  E.connectStatus.textContent = 'กำลังพาไปเชื่อมต่อ Instagram...';
+  E.connectStatus.textContent = 'กำลังพาไปหน้าอนุญาต Instagram...';
+
+  const appId = window.IG_APP_ID || localStorage.getItem('ig_app_id') || '';
+  const callbackUrl = new URL('oauth-callback.html', window.location.href).toString();
+  localStorage.setItem('ig_return_to', window.location.href);
+
+  if (appId) {
+    const authUrl = new URL('https://www.facebook.com/v22.0/dialog/oauth');
+    authUrl.searchParams.set('client_id', appId);
+    authUrl.searchParams.set('redirect_uri', callbackUrl);
+    authUrl.searchParams.set('response_type', 'token');
+    authUrl.searchParams.set('scope', 'instagram_basic,pages_show_list,pages_messaging,instagram_manage_messages');
+    window.location.href = authUrl.toString();
+    return;
+  }
+
   window.location.href = '/auth/instagram-direct/start';
 }
 
@@ -117,19 +119,13 @@ async function fetchChatHistory() {
   const igUserId = E.igUserId.value.trim();
   const recipientId = E.recipientId.value.trim();
   const accessToken = E.accessToken.value.trim();
-  if (!igUserId || !recipientId || !accessToken) {
-    E.fetchStatus.textContent = 'กรอก IG User ID, Recipient ID, Access Token ก่อนดึงแชท';
-    return;
-  }
+  if (!igUserId || !recipientId || !accessToken) return (E.fetchStatus.textContent = 'กรอก IG User ID, Recipient ID, Access Token ก่อนดึงแชท');
 
   E.fetchStatus.textContent = 'กำลังดึงแชทจาก IG...';
   try {
     const res = await fetch('/api/fetch-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ igUserId, recipientId, accessToken }) });
     const data = await res.json();
-    if (!res.ok) {
-      E.fetchStatus.textContent = `ดึงแชทไม่สำเร็จ: ${data.error || 'unknown error'}`;
-      return;
-    }
+    if (!res.ok) return (E.fetchStatus.textContent = `ดึงแชทไม่สำเร็จ: ${data.error || 'unknown error'}`);
     latestMessages = data.messages || [];
     renderHistory(latestMessages);
     E.fetchStatus.textContent = `ดึงสำเร็จ ${latestMessages.length} ข้อความ`;
@@ -141,10 +137,7 @@ async function fetchChatHistory() {
 
 async function initConnectionState() {
   const status = localStorage.getItem('ig_connect_status');
-  if (status?.startsWith('error:')) {
-    E.connectStatus.textContent = `เชื่อมต่อไม่สำเร็จ: ${status.replace('error:', '')}`;
-  }
-
+  if (status?.startsWith('error:')) E.connectStatus.textContent = `เชื่อมต่อไม่สำเร็จ: ${status.replace('error:', '')}`;
   const savedIgUserId = localStorage.getItem('ig_ig_user_id');
   if (savedIgUserId && !E.igUserId.value) E.igUserId.value = savedIgUserId;
 
@@ -155,9 +148,7 @@ async function initConnectionState() {
   }
 
   const token = localStorage.getItem('ig_access_token');
-  if (token) {
-    await hydrateFromToken(token);
-  }
+  if (token) await hydrateFromToken(token);
 }
 
 E.genBtn.addEventListener('click', generateOutput);
@@ -170,16 +161,10 @@ E.sendBtn.addEventListener('click', async () => {
   const recipientId = E.recipientId.value.trim();
   const accessToken = E.accessToken.value.trim();
   const idx = Number(E.replyIndex.value || 0);
-  if (!igUserId || !recipientId || !accessToken) {
-    E.sendStatus.textContent = 'กรอก IG User ID, Recipient ID, Access Token ให้ครบก่อน';
-    return;
-  }
+  if (!igUserId || !recipientId || !accessToken) return (E.sendStatus.textContent = 'กรอก IG User ID, Recipient ID, Access Token ให้ครบก่อน');
 
   const message = (lastOutput?.replies?.[idx] || '').trim();
-  if (!message) {
-    E.sendStatus.textContent = 'ยังไม่มีข้อความที่จะส่ง ลองดึงแชทและ Generate ก่อน';
-    return;
-  }
+  if (!message) return (E.sendStatus.textContent = 'ยังไม่มีข้อความที่จะส่ง ลองดึงแชทและ Generate ก่อน');
 
   E.sendStatus.textContent = 'กำลังส่ง...';
   try {
